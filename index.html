@@ -1,0 +1,382 @@
+<!DOCTYPE html>
+<html lang="id">
+  <head>
+    <meta charset="UTF-8" />
+    <title>CoalPrice Registry — Blockchain</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/6.7.0/ethers.umd.min.js"></script>
+    <style>
+      * {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+      }
+      body {
+        font-family: sans-serif;
+        background: #0f172a;
+        color: #e2e8f0;
+        min-height: 100vh;
+        padding: 2rem;
+      }
+      h1 {
+        color: #38bdf8;
+        margin-bottom: 0.25rem;
+      }
+      .subtitle {
+        color: #64748b;
+        margin-bottom: 2rem;
+        font-size: 0.9rem;
+      }
+      .card {
+        background: #1e293b;
+        border: 1px solid #334155;
+        border-radius: 12px;
+        padding: 1.5rem;
+        margin-bottom: 1.5rem;
+      }
+      h2 {
+        color: #94a3b8;
+        font-size: 1rem;
+        margin-bottom: 1rem;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+      }
+      input {
+        width: 100%;
+        padding: 0.6rem 0.8rem;
+        margin-bottom: 0.75rem;
+        background: #0f172a;
+        border: 1px solid #334155;
+        border-radius: 8px;
+        color: #e2e8f0;
+        font-size: 0.95rem;
+      }
+      button {
+        padding: 0.6rem 1.2rem;
+        border-radius: 8px;
+        border: none;
+        cursor: pointer;
+        font-weight: 600;
+        font-size: 0.95rem;
+      }
+      .btn-primary {
+        background: #0ea5e9;
+        color: white;
+        width: 100%;
+        margin-top: 0.5rem;
+      }
+      .btn-primary:hover {
+        background: #38bdf8;
+      }
+      .btn-connect {
+        background: #6366f1;
+        color: white;
+      }
+      .btn-connect:hover {
+        background: #818cf8;
+      }
+      .status {
+        padding: 0.75rem;
+        border-radius: 8px;
+        margin-bottom: 1rem;
+        font-size: 0.875rem;
+      }
+      .status.connected {
+        background: #064e3b;
+        color: #6ee7b7;
+        border: 1px solid #065f46;
+      }
+      .status.disconnected {
+        background: #1e1b4b;
+        color: #a5b4fc;
+        border: 1px solid #312e81;
+      }
+      .record {
+        background: #0f172a;
+        border: 1px solid #334155;
+        border-radius: 8px;
+        padding: 1rem;
+        margin-bottom: 0.75rem;
+      }
+      .record-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 0.5rem;
+      }
+      .record-id {
+        color: #38bdf8;
+        font-weight: 700;
+      }
+      .badge {
+        padding: 0.2rem 0.6rem;
+        border-radius: 99px;
+        font-size: 0.75rem;
+        font-weight: 600;
+      }
+      .badge.verified {
+        background: #064e3b;
+        color: #6ee7b7;
+      }
+      .badge.unverified {
+        background: #451a03;
+        color: #fbbf24;
+      }
+      .record-detail {
+        font-size: 0.85rem;
+        color: #94a3b8;
+        margin-top: 0.25rem;
+      }
+      .record-price {
+        font-size: 1.1rem;
+        font-weight: 700;
+        color: #f0abfc;
+      }
+      #wallet-section {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+        margin-bottom: 2rem;
+      }
+      #wallet-address {
+        color: #64748b;
+        font-size: 0.85rem;
+      }
+      .grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 1.5rem;
+      }
+      @media (max-width: 700px) {
+        .grid {
+          grid-template-columns: 1fr;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <h1>⛏ CoalPrice Registry</h1>
+    <p class="subtitle">
+      Sistem Verifikasi Harga Ekspor Batu Bara — Berbasis Blockchain Ethereum
+      Sepolia
+    </p>
+
+    <div id="wallet-section">
+      <button class="btn-connect" onclick="connectWallet()">
+        🔗 Connect MetaMask
+      </button>
+      <span id="wallet-address">Belum terhubung</span>
+    </div>
+
+    <div id="status" class="status disconnected">
+      ⚠ Wallet belum terhubung. Klik "Connect MetaMask" untuk memulai.
+    </div>
+
+    <div class="grid">
+      <div class="card">
+        <h2>📋 Submit Harga Batu Bara</h2>
+        <input
+          id="exporter"
+          placeholder="Nama Eksportir (contoh: PT. Adaro Energy)"
+        />
+        <input
+          id="price"
+          placeholder="Harga dalam sen USD (contoh: 9550 = $95.50)"
+          type="number"
+        />
+        <input
+          id="quality"
+          placeholder="Kualitas dalam Kcal (contoh: 5000)"
+          type="number"
+        />
+        <input id="source" placeholder="Sumber Harga (HDMA / Argus / Platts)" />
+        <button class="btn-primary" onclick="submitPrice()">
+          📤 Submit ke Blockchain
+        </button>
+      </div>
+
+      <div class="card">
+        <h2>🔍 Cek Record Harga</h2>
+        <input
+          id="recordId"
+          placeholder="ID Record (contoh: 1)"
+          type="number"
+        />
+        <button class="btn-primary" onclick="getRecord()">🔎 Ambil Data</button>
+        <div id="record-result" style="margin-top: 1rem"></div>
+        <br />
+        <h2>✅ Verifikasi Harga (Owner Only)</h2>
+        <input
+          id="verifyId"
+          placeholder="ID Record yang akan diverifikasi"
+          type="number"
+        />
+        <button class="btn-primary" onclick="verifyPrice()">
+          ✔ Verifikasi
+        </button>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>📊 Semua Record Harga</h2>
+      <button
+        class="btn-primary"
+        style="width: auto; margin-bottom: 1rem"
+        onclick="loadAllRecords()"
+      >
+        🔄 Refresh Data
+      </button>
+      <div id="records-list">Belum ada data. Submit harga terlebih dahulu.</div>
+    </div>
+
+    <script>
+      const CONTRACT_ADDRESS = "0x1B9e1393935641b4cdD38FCf57bd471Df87003a3";
+      const ABI = [
+        "function submitPrice(string memory _exporter, uint256 _priceUSDCents, uint256 _qualityKcal, string memory _priceSource) public",
+        "function verifyPrice(uint256 _id, string memory _remarks) public",
+        "function addVerifier(address _account) public",
+        "function addExporter(address _account) public",
+        "function removeVerifier(address _account) public",
+        "function removeExporter(address _account) public",
+        "function getRecord(uint256 _id) public view returns (tuple(uint256 id, string exporter, uint256 priceUSDCents, uint256 qualityKcal, string priceSource, address submittedBy, uint256 timestamp, bool verified, address verifiedBy, string remarks))",
+        "function recordCount() public view returns (uint256)",
+        "function isVerifier(address _account) public view returns (bool)",
+        "function isExporter(address _account) public view returns (bool)",
+        "function owner() public view returns (address)",
+      ];
+
+      let provider, signer, contract;
+
+      async function connectWallet() {
+        if (!window.ethereum) return alert("MetaMask tidak ditemukan!");
+        try {
+          provider = new ethers.BrowserProvider(window.ethereum);
+          await provider.send("eth_requestAccounts", []);
+          signer = await provider.getSigner();
+          contract = new ethers.Contract(CONTRACT_ADDRESS, ABI, signer);
+          const address = await signer.getAddress();
+          document.getElementById("wallet-address").textContent =
+            address.slice(0, 6) + "..." + address.slice(-4);
+          document.getElementById("status").className = "status connected";
+          document.getElementById("status").textContent =
+            "✅ Wallet terhubung: " + address;
+          loadAllRecords();
+        } catch (e) {
+          alert("Gagal connect: " + e.message);
+        }
+      }
+
+      async function submitPrice() {
+        if (!contract) return alert("Connect wallet dulu!");
+        const exporter = document.getElementById("exporter").value;
+        const price = document.getElementById("price").value;
+        const quality = document.getElementById("quality").value;
+        const source = document.getElementById("source").value;
+        if (!exporter || !price || !quality || !source)
+          return alert("Isi semua field!");
+        try {
+          document.getElementById("status").textContent =
+            "⏳ Mengirim transaksi ke blockchain...";
+          const tx = await contract.submitPrice(
+            exporter,
+            price,
+            quality,
+            source,
+          );
+          await tx.wait();
+          document.getElementById("status").className = "status connected";
+          document.getElementById("status").textContent =
+            "✅ Harga berhasil disubmit! TX: " + tx.hash;
+          loadAllRecords();
+        } catch (e) {
+          alert("Error: " + e.message);
+        }
+      }
+
+      async function getRecord() {
+        if (!contract) return alert("Connect wallet dulu!");
+        const id = document.getElementById("recordId").value;
+        try {
+          const r = await contract.getRecord(id);
+          const date = new Date(Number(r.timestamp) * 1000).toLocaleString(
+            "id-ID",
+          );
+          document.getElementById("record-result").innerHTML = `
+      <div class="record">
+        <div class="record-header">
+          <span class="record-id">#${r.id}</span>
+          <span class="badge ${r.verified ? "verified" : "unverified"}">${
+            r.verified ? "✅ Verified" : "⏳ Unverified"
+          }</span>
+        </div>
+        <div class="record-price">$${(Number(r.priceUSDCents) / 100).toFixed(
+          2,
+        )} / ton</div>
+        <div class="record-detail">🏭 ${r.exporter}</div>
+        <div class="record-detail">⚡ ${r.qualityKcal} Kcal | 📰 ${
+            r.priceSource
+          }</div>
+        <div class="record-detail">🕐 ${date}</div>
+      </div>`;
+        } catch (e) {
+          alert("Record tidak ditemukan");
+        }
+      }
+
+      async function verifyPrice() {
+        if (!contract) return alert("Connect wallet dulu!");
+        const id = document.getElementById("verifyId").value;
+        const remarks = prompt(
+          "Masukkan catatan verifikasi (contoh: Sesuai HDMA bulan Juni 2026):",
+        );
+        if (!remarks) return;
+        try {
+          document.getElementById("status").textContent = "⏳ Memverifikasi...";
+          const tx = await contract.verifyPrice(id, remarks);
+          await tx.wait();
+          document.getElementById("status").className = "status connected";
+          document.getElementById("status").textContent =
+            "✅ Record #" + id + " berhasil diverifikasi!";
+          loadAllRecords();
+        } catch (e) {
+          alert("Error: " + e.message);
+        }
+      }
+
+      async function loadAllRecords() {
+        if (!contract) return;
+        try {
+          const count = await contract.recordCount();
+          const list = document.getElementById("records-list");
+          if (Number(count) === 0) {
+            list.innerHTML = "Belum ada data.";
+            return;
+          }
+          let html = "";
+          for (let i = 1; i <= Number(count); i++) {
+            const r = await contract.getRecord(i);
+            const date = new Date(Number(r.timestamp) * 1000).toLocaleString(
+              "id-ID",
+            );
+            html += `<div class="record">
+        <div class="record-header">
+          <span class="record-id">#${r.id} — ${r.exporter}</span>
+          <span class="badge ${r.verified ? "verified" : "unverified"}">${
+              r.verified ? "✅ Verified" : "⏳ Unverified"
+            }</span>
+        </div>
+        <div class="record-price">$${(Number(r.priceUSDCents) / 100).toFixed(
+          2,
+        )} / ton</div>
+        <div class="record-detail">⚡ ${r.qualityKcal} Kcal | 📰 ${
+              r.priceSource
+            } | 🕐 ${date}</div>
+      </div>`;
+          }
+          list.innerHTML = html;
+        } catch (e) {
+          console.error(e);
+        }
+      }
+    </script>
+  </body>
+</html>
